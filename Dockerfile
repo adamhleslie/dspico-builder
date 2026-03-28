@@ -101,3 +101,19 @@ RUN cd /build/DSRomEncryptor/bin/Debug/net9.0 && \
     dotnet DSRomEncryptor.dll /build/BOOTLOADER.nds /build/default.nds
 
 # Artifact: /build/default.nds
+
+# ==============================================================================
+# Stage: wrfuxxed (optional)
+# Compiles and DLDI-patches the Wrfuxxed exploit for DSi/3DS.
+# Source: https://github.com/LNH-team/dspico-wrfuxxed
+# ==============================================================================
+FROM blocksds AS wrfuxxed
+
+WORKDIR /build
+RUN git clone https://github.com/LNH-team/dspico-wrfuxxed.git . && \
+    make
+
+COPY --from=dldi /build/DSpico.dldi /build/DSpico.dldi
+RUN $DLDITOOL DSpico.dldi uartBufv060.bin
+
+# Artifact: /build/uartBufv060.bin (DLDI-patched)
