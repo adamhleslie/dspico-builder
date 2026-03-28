@@ -15,6 +15,7 @@ BUILDX = docker buildx build $(BUILD_ARGS)
 all: output/DSpico.uf2 output/LAUNCHER.nds output/picoLoader7.bin
 
 sdcard: all
+	@rm -rf output/sdcard
 	@mkdir -p output/sdcard/_pico
 	cp output/LAUNCHER.nds output/sdcard/_picoboot.nds
 	cp output/picoLoader7.bin output/sdcard/_pico/picoLoader7.bin
@@ -64,6 +65,7 @@ dldi:
 	mv output/dldi/DSpico.dldi output/DSpico.dldi
 	rm -rf output/dldi
 
+# Builds through the encrypt stage; output is default.nds (encrypted bootloader)
 bootloader:
 	$(BUILDX) --target encrypt --output type=local,dest=output/encrypt .
 	mv output/encrypt/default.nds output/default.nds

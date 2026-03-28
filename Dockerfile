@@ -145,9 +145,11 @@ RUN git clone https://github.com/LNH-team/dspico-firmware.git . && \
 # Copy encrypted bootloader
 COPY --from=encrypt /build/default.nds /build/roms/default.nds
 
-# Wrfuxxed exploit support: binary is always copied from the wrfuxxed stage.
-# The WRFU Tester ROM (dsimode.nds) must be placed in roms/ by the user when
-# ENABLE_WRFUXXED=true. The Makefile handles copying it into the build context.
+# Wrfuxxed exploit support: the wrfuxxed stage always builds (cached when unchanged)
+# and its binary is always copied here. The firmware ignores it unless
+# DSPICO_ENABLE_WRFUXXED is uncommented in CMakeLists.txt via ENABLE_WRFUXXED=true.
+# For full Wrfuxxed support, also place the WRFU Tester v0.60 ROM as
+# roms/dsimode.nds in the firmware repo (not handled by this Dockerfile).
 COPY --from=wrfuxxed /build/uartBufv060.bin /build/data/uartBufv060.bin
 
 RUN if [ "$ENABLE_WRFUXXED" = "true" ]; then \
