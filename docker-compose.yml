@@ -1,0 +1,10 @@
+services:
+  build:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: output
+      args:
+        BLOWFISH_DIR: ${BLOWFISH_DIR:-.}
+        ENABLE_WRFUXXED: ${ENABLE_WRFUXXED:-false}
+    image: dspico-build
