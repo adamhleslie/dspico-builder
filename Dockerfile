@@ -60,3 +60,44 @@ COPY --from=dldi /build/DSpico.dldi /build/DSpico.dldi
 RUN $DLDITOOL DSpico.dldi BOOTLOADER.nds
 
 # Artifact: /build/BOOTLOADER.nds (DLDI-patched)
+
+# ==============================================================================
+# Stage: encryptor
+# Builds DSRomEncryptor (.NET 9.0).
+# Source: https://github.com/Gericom/DSRomEncryptor
+# ==============================================================================
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS encryptor
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /build
+RUN git clone https://github.com/Gericom/DSRomEncryptor.git . && \
+    dotnet build
+
+# Artifact: /build/DSRomEncryptor/bin/Debug/net9.0/DSRomEncryptor
+
+# ==============================================================================
+# Stage: encrypt
+# Encrypts the bootloader using DSRomEncryptor + user-supplied blowfish keys.
+# Source: https://github.com/Gericom/DSRomEncryptor#blowfish-tables
+# ==============================================================================
+FROM encryptor AS encrypt
+
+ARG BLOWFISH_DIR=.
+
+# Copy blowfish key files into the DSRomEncryptor executable directory.
+# Supports: ntrBlowfish.bin, biosnds7.rom, twlBlowfish.bin, biosdsi7.rom, twlDevBlowfish.bin
+# DSRomEncryptor auto-detects whichever files are present.
+COPY ${BLOWFISH_DIR}/ntrBlowfish.bi[n] ${BLOWFISH_DIR}/biosnds7.ro[m] \
+     ${BLOWFISH_DIR}/twlBlowfish.bi[n] ${BLOWFISH_DIR}/biosdsi7.ro[m] \
+     ${BLOWFISH_DIR}/twlDevBlowfish.bi[n] \
+     /build/DSRomEncryptor/bin/Debug/net9.0/
+
+COPY --from=bootloader /build/BOOTLOADER.nds /build/BOOTLOADER.nds
+
+RUN cd /build/DSRomEncryptor/bin/Debug/net9.0 && \
+    dotnet DSRomEncryptor.dll /build/BOOTLOADER.nds /build/default.nds
+
+# Artifact: /build/default.nds
