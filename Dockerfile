@@ -30,3 +30,33 @@ RUN wf-pacman --noconfirm -Syu wf-tools && \
 ENV BLOCKSDS=/opt/wonderful/thirdparty/blocksds/core
 ENV BLOCKSDSEXT=/opt/wonderful/thirdparty/blocksds/external
 ENV DLDITOOL=/opt/wonderful/thirdparty/blocksds/core/tools/dlditool/dlditool
+
+# ==============================================================================
+# Stage: dldi
+# Compiles the DSpico DLDI driver.
+# Source: https://github.com/LNH-team/dspico-dldi
+# ==============================================================================
+FROM blocksds AS dldi
+
+WORKDIR /build
+RUN git clone https://github.com/LNH-team/dspico-dldi.git . && \
+    make
+
+# Artifact: /build/DSpico.dldi
+
+# ==============================================================================
+# Stage: bootloader
+# Compiles and DLDI-patches the DSpico bootloader.
+# Source: https://github.com/LNH-team/dspico-bootloader
+# ==============================================================================
+FROM blocksds AS bootloader
+
+WORKDIR /build
+RUN git clone https://github.com/LNH-team/dspico-bootloader.git . && \
+    git submodule update --init && \
+    make
+
+COPY --from=dldi /build/DSpico.dldi /build/DSpico.dldi
+RUN $DLDITOOL DSpico.dldi BOOTLOADER.nds
+
+# Artifact: /build/BOOTLOADER.nds (DLDI-patched)
