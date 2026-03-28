@@ -1,0 +1,16 @@
+# Build output
+output/
+
+# Blowfish key files (user-supplied, not redistributable)
+ntrBlowfish.bin
+biosnds7.rom
+twlBlowfish.bin
+biosdsi7.rom
+twlDevBlowfish.bin
+
+# WRFU Tester ROM (user-supplied)
+wrfu_tester_v060.nds
+
+# OS
+.DS_Store
+Thumbs.db
