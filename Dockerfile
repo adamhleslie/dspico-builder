@@ -145,11 +145,10 @@ RUN git clone https://github.com/LNH-team/dspico-firmware.git . && \
 # Copy encrypted bootloader
 COPY --from=encrypt /build/default.nds /build/roms/default.nds
 
-# Conditional: Wrfuxxed exploit support
-COPY --from=wrfuxxe[d] /build/uartBufv060.bin /build/data/uartBufv060.bin*
-ARG WRFU_TESTER_ROM=wrfu_tester_v060.nds
-# The glob trick: wrfu_tester_v060.nd[s] won't fail if file is absent
-COPY ${WRFU_TESTER_ROM%.nds}.nd[s] /build/roms/dsimode.nds*
+# Wrfuxxed exploit support: binary is always copied from the wrfuxxed stage.
+# The WRFU Tester ROM (dsimode.nds) must be placed in roms/ by the user when
+# ENABLE_WRFUXXED=true. The Makefile handles copying it into the build context.
+COPY --from=wrfuxxed /build/uartBufv060.bin /build/data/uartBufv060.bin
 
 RUN if [ "$ENABLE_WRFUXXED" = "true" ]; then \
       sed -i 's/#DSPICO_ENABLE_WRFUXXED/DSPICO_ENABLE_WRFUXXED/' CMakeLists.txt; \
