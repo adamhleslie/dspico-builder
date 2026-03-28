@@ -117,3 +117,89 @@ COPY --from=dldi /build/DSpico.dldi /build/DSpico.dldi
 RUN $DLDITOOL DSpico.dldi uartBufv060.bin
 
 # Artifact: /build/uartBufv060.bin (DLDI-patched)
+
+# ==============================================================================
+# Stage: firmware
+# Compiles the DSpico RP2040 firmware. Produces DSpico.uf2.
+# Source: https://github.com/LNH-team/dspico-firmware
+# ==============================================================================
+FROM debian:bookworm-slim AS firmware
+
+ARG ENABLE_WRFUXXED=false
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    ca-certificates \
+    cmake \
+    gcc-arm-none-eabi \
+    git \
+    libnewlib-arm-none-eabi \
+    python3 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /build
+RUN git clone https://github.com/LNH-team/dspico-firmware.git . && \
+    git submodule update --init && \
+    cd pico-sdk && git submodule update --init && cd ..
+
+# Copy encrypted bootloader
+COPY --from=encrypt /build/default.nds /build/roms/default.nds
+
+# Conditional: Wrfuxxed exploit support
+COPY --from=wrfuxxe[d] /build/uartBufv060.bin /build/data/uartBufv060.bin*
+ARG WRFU_TESTER_ROM=wrfu_tester_v060.nds
+# The glob trick: wrfu_tester_v060.nd[s] won't fail if file is absent
+COPY ${WRFU_TESTER_ROM%.nds}.nd[s] /build/roms/dsimode.nds*
+
+RUN if [ "$ENABLE_WRFUXXED" = "true" ]; then \
+      sed -i 's/#DSPICO_ENABLE_WRFUXXED/DSPICO_ENABLE_WRFUXXED/' CMakeLists.txt; \
+    fi
+
+RUN chmod +x compile.sh && ./compile.sh
+
+# Artifact: /build/build/DSpico.uf2
+
+# ==============================================================================
+# Stage: loader
+# Compiles Pico Loader.
+# Source: https://github.com/LNH-team/pico-loader
+# ==============================================================================
+FROM blocksds AS loader
+
+WORKDIR /build
+RUN git clone https://github.com/LNH-team/pico-loader.git . && \
+    git submodule update --init && \
+    make
+
+# Artifacts: /build/picoLoader7.bin, /build/picoLoader9_DSPICO.bin,
+#            /build/data/aplist.bin, /build/data/savelist.bin
+
+# ==============================================================================
+# Stage: launcher
+# Compiles Pico Launcher.
+# Source: https://github.com/LNH-team/pico-launcher
+# ==============================================================================
+FROM blocksds AS launcher
+
+WORKDIR /build
+RUN git clone https://github.com/LNH-team/pico-launcher.git . && \
+    git submodule update --init && \
+    make
+
+# Artifacts: /build/LAUNCHER.nds, /build/_pico/ (themes)
+
+# ==============================================================================
+# Stage: output
+# Collects all build artifacts into /out for extraction.
+# ==============================================================================
+FROM debian:bookworm-slim AS output
+
+RUN mkdir -p /out
+
+COPY --from=firmware /build/build/DSpico.uf2 /out/DSpico.uf2
+COPY --from=loader /build/picoLoader7.bin /out/picoLoader7.bin
+COPY --from=loader /build/picoLoader9_DSPICO.bin /out/picoLoader9_DSPICO.bin
+COPY --from=loader /build/data/aplist.bin /out/aplist.bin
+COPY --from=loader /build/data/savelist.bin /out/savelist.bin
+COPY --from=launcher /build/LAUNCHER.nds /out/LAUNCHER.nds
+COPY --from=launcher /build/_pico/ /out/_pico/
