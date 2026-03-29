@@ -134,6 +134,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc-arm-none-eabi \
     git \
     libnewlib-arm-none-eabi \
+    libstdc++-arm-none-eabi-newlib \
     python3 \
     && rm -rf /var/lib/apt/lists/*
 
@@ -166,6 +167,14 @@ RUN chmod +x compile.sh && ./compile.sh
 # Source: https://github.com/LNH-team/pico-loader
 # ==============================================================================
 FROM blocksds AS loader
+
+# pico-loader needs .NET 9.0 for PicoLoaderConverter (generates aplist.bin, savelist.bin)
+ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
+RUN wget -qO /tmp/dotnet-install.sh https://dot.net/v1/dotnet-install.sh && \
+    chmod +x /tmp/dotnet-install.sh && \
+    /tmp/dotnet-install.sh --channel 9.0 --install-dir /usr/share/dotnet && \
+    ln -s /usr/share/dotnet/dotnet /usr/local/bin/dotnet && \
+    rm /tmp/dotnet-install.sh
 
 WORKDIR /build
 RUN git clone https://github.com/LNH-team/pico-loader.git . && \

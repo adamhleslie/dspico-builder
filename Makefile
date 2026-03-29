@@ -29,30 +29,37 @@ clean:
 	rm -rf output/
 
 # --- Individual stage targets ---
+# Each target: build stage with --load, create temp container, docker cp artifacts out.
 
 output/DSpico.uf2: output/.firmware
 output/.firmware:
-	$(BUILDX) --target firmware --output type=local,dest=output/firmware .
-	mv output/firmware/build/DSpico.uf2 output/DSpico.uf2
-	rm -rf output/firmware
+	$(BUILDX) --target firmware --load -t dspico-firmware .
+	@mkdir -p output
+	@cid=$$(docker create dspico-firmware) && \
+		docker cp $$cid:/build/build/DSpico.uf2 output/DSpico.uf2 && \
+		docker rm $$cid > /dev/null
 	@touch $@
 
 output/LAUNCHER.nds output/_pico: output/.launcher
 output/.launcher:
-	$(BUILDX) --target launcher --output type=local,dest=output/launcher .
-	mv output/launcher/LAUNCHER.nds output/LAUNCHER.nds
-	cp -r output/launcher/_pico output/_pico
-	rm -rf output/launcher
+	$(BUILDX) --target launcher --load -t dspico-launcher .
+	@mkdir -p output
+	@cid=$$(docker create dspico-launcher) && \
+		docker cp $$cid:/build/LAUNCHER.nds output/LAUNCHER.nds && \
+		docker cp $$cid:/build/_pico output/_pico && \
+		docker rm $$cid > /dev/null
 	@touch $@
 
 output/picoLoader7.bin output/picoLoader9_DSPICO.bin output/aplist.bin output/savelist.bin: output/.loader
 output/.loader:
-	$(BUILDX) --target loader --output type=local,dest=output/loader .
-	mv output/loader/picoLoader7.bin output/picoLoader7.bin
-	mv output/loader/picoLoader9_DSPICO.bin output/picoLoader9_DSPICO.bin
-	mv output/loader/data/aplist.bin output/aplist.bin
-	mv output/loader/data/savelist.bin output/savelist.bin
-	rm -rf output/loader
+	$(BUILDX) --target loader --load -t dspico-loader .
+	@mkdir -p output
+	@cid=$$(docker create dspico-loader) && \
+		docker cp $$cid:/build/picoLoader7.bin output/picoLoader7.bin && \
+		docker cp $$cid:/build/picoLoader9_DSPICO.bin output/picoLoader9_DSPICO.bin && \
+		docker cp $$cid:/build/data/aplist.bin output/aplist.bin && \
+		docker cp $$cid:/build/data/savelist.bin output/savelist.bin && \
+		docker rm $$cid > /dev/null
 	@touch $@
 
 # Convenience aliases
@@ -61,12 +68,16 @@ launcher: output/LAUNCHER.nds
 loader: output/picoLoader7.bin
 
 dldi:
-	$(BUILDX) --target dldi --output type=local,dest=output/dldi .
-	mv output/dldi/DSpico.dldi output/DSpico.dldi
-	rm -rf output/dldi
+	$(BUILDX) --target dldi --load -t dspico-dldi .
+	@mkdir -p output
+	@cid=$$(docker create dspico-dldi) && \
+		docker cp $$cid:/build/DSpico.dldi output/DSpico.dldi && \
+		docker rm $$cid > /dev/null
 
 # Builds through the encrypt stage; output is default.nds (encrypted bootloader)
 bootloader:
-	$(BUILDX) --target encrypt --output type=local,dest=output/encrypt .
-	mv output/encrypt/default.nds output/default.nds
-	rm -rf output/encrypt
+	$(BUILDX) --target encrypt --load -t dspico-encrypt .
+	@mkdir -p output
+	@cid=$$(docker create dspico-encrypt) && \
+		docker cp $$cid:/build/default.nds output/default.nds && \
+		docker rm $$cid > /dev/null
